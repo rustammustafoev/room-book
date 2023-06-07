@@ -1,7 +1,7 @@
 from tortoise.models import Model
 from tortoise import fields
 
-from app.db import constants, validators
+from app.db import constants
 
 
 class Room(Model):
@@ -18,7 +18,7 @@ class Room(Model):
 
 class Resident(Model):
     name = fields.CharField(max_length=100, null=False, unique=True)
-    email = fields.CharField(max_length=100, unique=True, validators=[validators.validate_email])
+    email = fields.CharField(max_length=100, unique=True)
     start_date = fields.DateField()
     end_data = fields.DateField()
 
