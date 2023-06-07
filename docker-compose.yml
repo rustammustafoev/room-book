@@ -9,8 +9,11 @@ services:
       - '8000:8000'
     volumes:
       - ./app:/service/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    depends_on:
+      - db
 
-  postgres:
+  db:
     image: 'postgres:14.8'
     ports:
       - '5432:5432'
