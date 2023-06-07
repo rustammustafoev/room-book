@@ -1,0 +1,23 @@
+.idea
+*.iws
+*.iml
+*.ipr
+
+.DS_Store
+
+### PyCharm ###
+__pycache__/
+*.py[cod]
+
+### Virtualenv ###
+ENV
+venv
+
+### System ###
+nohup.out
+celerybeat-schedule
+
+bin/
+lib/
+pyvenv.cfg
+.env
