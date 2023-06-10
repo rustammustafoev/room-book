@@ -31,8 +31,8 @@ class Resident(Model):
 
 class Booking(Model):
     id = fields.IntField(pk=True)
-    room = fields.ForeignKeyField('Room', related_name='bookings')
-    resident = fields.ForeignKeyField('Resident', related_name='bookings')
+    room = fields.ForeignKeyField('models.Room', related_name='bookings')
+    resident = fields.ForeignKeyField('models.Resident', related_name='bookings')
     start_time = fields.DatetimeField()
     end_time = fields.DatetimeField()
 
