@@ -1,6 +1,7 @@
-from typing import Callable
+from typing import Callable, Union
+from datetime import datetime
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from tortoise.contrib.fastapi import register_tortoise
 from loguru import logger
 
@@ -33,3 +34,30 @@ def init_db(app: FastAPI) -> None:
         logger.error('Error initializing db -> %s' % e)
     else:
         logger.success('Db is initialized successfully')
+
+
+def check_date_format(date: str) -> bool:
+
+    try:
+        datetime.strptime(date, '%Y-%m-%d %H:%M:%S')
+        return True
+
+    except ValueError:
+        return False
+
+
+def is_valid_date(date: Union[str, None]) -> str:
+    current_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    if date is None:
+        date = current_date
+
+    elif not check_date_format(date):
+        raise HTTPException(status_code=400,
+                            detail={'error': 'Date does not match format YYYY-MM-DD HH:MM:SS'})
+
+    elif not (date > current_date):
+        raise HTTPException(status_code=400,
+                            detail={'error': 'Specified date must not be in the past!'})
+
+    return date

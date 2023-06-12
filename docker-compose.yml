@@ -19,3 +19,8 @@ services:
       - POSTGRES_USER=impact
       - POSTGRES_PASSWORD=hub
       - POSTGRES_DB=booking
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+volumes:
+  db-data:
