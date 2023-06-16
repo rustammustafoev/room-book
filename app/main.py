@@ -3,11 +3,13 @@ from fastapi import FastAPI
 
 from app.core import utils
 from app.api import api
+from app.core.middlewares import middleware
 
 
 def get_application() -> FastAPI:
     app = FastAPI(
-        title='Impact Room Book'
+        title='Impact Room Book',
+        middleware=middleware
     )
 
     app.add_event_handler('startup', utils.start_up_handler(app))

@@ -1,25 +1,51 @@
 from typing import Union
 
-from fastapi import APIRouter, Query, Path
+from fastapi import APIRouter, Query, Path, HTTPException, Depends
+from fastapi.encoders import jsonable_encoder
+from tortoise.expressions import Q
 
-from app.core import utils
+from app.core import utils, helpers
+from app.db import models
+from app.db.schemas import room as room_schemas
+from app.db.schemas.pagination import PaginatedPerPageResponse
 
 router = APIRouter()
 
 
-@router.get('/')
+@router.get('/', response_model=PaginatedPerPageResponse[room_schemas.RoomOut])
 async def get_rooms(
     search: Union[str, None] = Query(None, title='Room name'),
     room_type: Union[str, None] = Query(None, title='Room type'),
-    page: int = Query(..., title='Page number'),
-    page_size: int = Query(default=10, title='Number of results in a page')
+    q: helpers.PaginationParams = Depends(),
 ):
-    pass
+    filters = []
+    if search:
+        filters.append(Q(name=search))
+    if room_type:
+        filters.append(Q(room_type=room_type))
+
+    rooms_query = models.Room.filter(Q(*filters, join_type='AND'))
+    count = await rooms_query.count()
+    items = await rooms_query
+
+    return helpers.paginate(q.limit, q.offset, count, items)
 
 
-@router.get('/{room_id}')
-async def get_room(room_id: int = Path(..., title='Room ID', gt=1)):
-    pass
+@router.get('/{room_id}', response_model=room_schemas.RoomOut)
+async def get_room(room_id: int = Path(..., title='Room ID', gt=0)):
+    room = await models.Room.get_or_none(id=room_id)
+
+    if room is None:
+        raise HTTPException(status_code=404, detail={'detail': 'Room with this idea does not exist'})
+
+    return room
+
+
+@router.post('/create', response_model=room_schemas.RoomOut)
+async def create_room(room_form: room_schemas.RoomIn):
+    room = await models.Room.create(**jsonable_encoder(room_form))
+
+    return room
 
 
 @router.get('/{room_id}/availability')

@@ -1,13 +1,15 @@
 from tortoise.models import Model
 from tortoise import fields
 
-from app.db import constants
+from app.db import constants, validators
 
 
 class Room(Model):
     id = fields.IntField(pk=True)
     name = fields.CharField(max_length=100, null=False, unique=True)
     type = fields.CharEnumField(constants.RoomType)
+    capacity = fields.IntField(validators=[validators.check_min_value(1, 'capacity')])
+    status = fields.BooleanField(default=True)
 
     class Meta:
         table = 'room'
