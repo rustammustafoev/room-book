@@ -11,6 +11,7 @@ class PaginationMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         request_object.set(request)
         response = await call_next(request)
+
         return response
 
 

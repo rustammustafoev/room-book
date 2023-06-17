@@ -5,6 +5,8 @@ from app.core.middlewares import request_object
 
 class PaginationParams:
     def __init__(self, page: int = Query(1, ge=1), per_page: int = Query(13, ge=0)):
+        self.page = page
+        self.per_page = per_page
         self.limit = per_page * page
         self.offset = (page - 1) * per_page
 
@@ -47,19 +49,16 @@ class Paginator:
 
         return self.count
 
-    def _get_items(self):
-        return {'items': self.items}
-
     def get_response(self):
         return {
             'count': self._get_total_count(),
             'next_page': self._get_next_page(),
             'previous_page': self._get_previous_page(),
-            'items': self._get_items()
+            'items': self.items
         }
 
 
-async def paginate(page: int, per_page: int, count: int, items):
+def paginate(page: int, per_page: int, count: int, items):
     paginator = Paginator(page=page, per_page=per_page, count=count, items=items)
 
     return paginator.get_response()

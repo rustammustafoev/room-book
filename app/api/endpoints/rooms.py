@@ -22,13 +22,13 @@ async def get_rooms(
     if search:
         filters.append(Q(name=search))
     if room_type:
-        filters.append(Q(room_type=room_type))
+        filters.append(Q(type=room_type))
 
     rooms_query = models.Room.filter(Q(*filters, join_type='AND'))
     count = await rooms_query.count()
-    items = await rooms_query
+    items = await rooms_query.limit(q.limit).offset(q.offset)
 
-    return helpers.paginate(q.limit, q.offset, count, items)
+    return helpers.paginate(q.page, q.per_page, count, items)
 
 
 @router.get('/{room_id}', response_model=room_schemas.RoomOut)
