@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 
 from app.db import constants
@@ -7,6 +9,8 @@ class RoomBase(BaseModel):
     name: str
     capacity: int
     type: constants.RoomType
+    opens_at: datetime
+    closes_at: datetime
 
 
 class RoomIn(RoomBase):
@@ -18,3 +22,8 @@ class RoomOut(RoomBase):
 
     class Config:
         orm_mode = True
+
+
+class AvailableTimeSlot(BaseModel):
+    start: datetime
+    end: datetime

@@ -10,6 +10,8 @@ class Room(Model):
     type = fields.CharEnumField(constants.RoomType)
     capacity = fields.IntField(validators=[validators.check_min_value(1, 'capacity')])
     status = fields.BooleanField(default=True)
+    opens_at = fields.DatetimeField()
+    closes_at = fields.DatetimeField()
 
     class Meta:
         table = 'room'
@@ -37,6 +39,7 @@ class Booking(Model):
     resident = fields.ForeignKeyField('models.Resident', related_name='bookings')
     start_time = fields.DatetimeField()
     end_time = fields.DatetimeField()
+    date = fields.DateField()
 
     class Meta:
         table = 'booking'

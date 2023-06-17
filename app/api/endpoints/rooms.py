@@ -1,12 +1,13 @@
-from typing import Union
+from typing import Union, List
 
-from fastapi import APIRouter, Query, Path, HTTPException, Depends
+from fastapi import APIRouter, Query, Path, HTTPException, Depends, Body
 from fastapi.encoders import jsonable_encoder
 from tortoise.expressions import Q
 
 from app.core import utils, helpers
 from app.db import models
 from app.db.schemas import room as room_schemas
+from app.db.schemas import booking as booking_schemas
 from app.db.schemas.pagination import PaginatedPerPageResponse
 
 router = APIRouter()
@@ -48,17 +49,52 @@ async def create_room(room_form: room_schemas.RoomIn):
     return room
 
 
-@router.get('/{room_id}/availability')
+@router.get('/{room_id}/availability', response_model=List[room_schemas.AvailableTimeSlot])
 async def get_room_availability(
-    room_id: int = Path(..., title='Room ID', gt=1),
+    room_id: int = Path(..., title='Room ID', gt=0),
     date: Union[str, None] = Query(default=None,
                                    title='Room availability at date',
-                                   description='Format: YYYY-MM-DD HH:MM:SS',
-                                   example='2023-06-12 15:59:59',)
+                                   description='Format: YYYY-MM-DD',
+                                   example='2023-06-12',)
 ):
     date = utils.is_valid_date(date)
+    room = await models.Room.get_or_none(id=room_id)
+
+    if not room:
+        raise HTTPException(status_code=400, detail={'error': 'Room is not found'})
+
+    bookings = await models.Booking.filter(room=room, date=date).order_by('start_time')
+
+    available_time_slots = utils.get_available_time_slots(room.opens_at, room.closes_at, bookings)
+
+    return available_time_slots
 
 
-@router.get('/{room_id}/book')
-async def book_room(room_id: int = Path(..., title='Room ID', gt=1)):
-    pass
+@router.get('/{room_id}/book', response_model=booking_schemas.BookingOut)
+async def book_room(
+        room_id: int = Path(..., title='Room ID', gt=0),
+        booking_form: booking_schemas.BookingIn = Body(...)
+):
+    room = await models.Room.get_or_none(id=room_id)
+    resident = await models.Resident.get_or_none(name=booking_form.resident)
+
+    if not room:
+        raise HTTPException(status_code=400, detail={'error': 'Room is not found'})
+
+    if not resident:
+        raise HTTPException(status_code=400, detail={'error': 'Resident is not found'})
+
+    bookings = await models.Booking.filter(room=room, date=utils.clean_date(booking_form.start_time))
+
+    if not utils.check_booking_time_for_clash(booking_form.start_time,
+                                              booking_form.end_time,
+                                              bookings):
+        raise HTTPException(status_code=410, detail={'detail': 'Sorry, this room is fully booked'})
+
+    new_booking = await models.Booking.create(
+        room=room, resident=resident, start_time=booking_form.start_time,
+        end_time=booking_form.end_time, date=booking_form.date
+    )
+
+    return new_booking
+

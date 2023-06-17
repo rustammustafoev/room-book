@@ -1,4 +1,4 @@
-from typing import Callable, Union
+from typing import Callable, Union, List, Dict
 from datetime import datetime
 
 from fastapi import FastAPI, HTTPException
@@ -6,6 +6,7 @@ from tortoise.contrib.fastapi import register_tortoise
 from loguru import logger
 
 from app.core import tortoise_config
+from app.db import models
 
 
 def start_up_handler(app: FastAPI) -> Callable:
@@ -39,7 +40,7 @@ def init_db(app: FastAPI) -> None:
 def check_date_format(date: str) -> bool:
 
     try:
-        datetime.strptime(date, '%Y-%m-%d %H:%M:%S')
+        datetime.strptime(date, '%Y-%m-%d')
         return True
 
     except ValueError:
@@ -47,17 +48,66 @@ def check_date_format(date: str) -> bool:
 
 
 def is_valid_date(date: Union[str, None]) -> str:
-    current_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    current_date = datetime.now().strftime('%Y-%m-%d')
 
     if date is None:
         date = current_date
 
     elif not check_date_format(date):
         raise HTTPException(status_code=400,
-                            detail={'error': 'Date does not match format YYYY-MM-DD HH:MM:SS'})
+                            detail={'error': 'Date does not match format YYYY-MM-DD'})
 
     elif not (date > current_date):
         raise HTTPException(status_code=400,
                             detail={'error': 'Specified date must not be in the past!'})
 
     return date
+
+
+def clean_date(datetime_: Union[str, datetime]):
+    date = None
+
+    if isinstance(datetime_, str):
+        date = datetime_.split()[0]
+
+    if isinstance(datetime_, datetime):
+        date = datetime.strptime(datetime_, '%Y-%m-%d %H:%M:%S')
+        date.date().isoformat()
+
+    return date
+
+
+def get_available_time_slots(
+        room_opens_at: datetime,
+        room_closes_at: datetime,
+        bookings: List[models.Booking],
+) -> List[Dict[str, str]]:
+    available_slots = []
+
+    for booking in bookings:
+        if booking.start_time > room_opens_at:
+            end_time = booking.start_time
+            available_slots.append({'start': room_opens_at, 'end': end_time})
+        room_opens_at = booking.end_time
+
+    if room_opens_at < room_closes_at:
+        available_slots.append({'start': room_opens_at, 'end': room_closes_at})
+
+    return available_slots
+
+
+def check_booking_time_for_clash(
+        start: datetime,
+        end: datetime,
+        bookings: List[models.Booking],
+) -> bool:
+    for booking in bookings:
+        if (
+          start <= booking.end_time
+          and end >= booking.start_time
+        ):
+            return True
+
+    return False
+
+
