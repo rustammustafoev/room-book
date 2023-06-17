@@ -36,7 +36,7 @@ async def get_room(room_id: int = Path(..., title='Room ID', gt=0)):
     room = await models.Room.get_or_none(id=room_id)
 
     if room is None:
-        raise HTTPException(status_code=404, detail={'detail': 'Room with this idea does not exist'})
+        raise HTTPException(status_code=404, detail={'error': 'Room is not found'})
 
     return room
 
