@@ -1,5 +1,5 @@
 from typing import Callable, Union, List, Dict
-from datetime import datetime
+from datetime import datetime, time
 
 from fastapi import FastAPI, HTTPException
 from tortoise.contrib.fastapi import register_tortoise
@@ -57,22 +57,9 @@ def is_valid_date(date: Union[str, None]) -> str:
         raise HTTPException(status_code=400,
                             detail={'error': 'Date does not match format YYYY-MM-DD'})
 
-    elif not (date > current_date):
+    elif not (date >= current_date):
         raise HTTPException(status_code=400,
                             detail={'error': 'Specified date must not be in the past!'})
-
-    return date
-
-
-def clean_date(datetime_: Union[str, datetime]):
-    date = None
-
-    if isinstance(datetime_, str):
-        date = datetime_.split()[0]
-
-    if isinstance(datetime_, datetime):
-        date = datetime.strptime(datetime_, '%Y-%m-%d %H:%M:%S')
-        date.date().isoformat()
 
     return date
 
@@ -81,7 +68,7 @@ def get_available_time_slots(
         room_opens_at: datetime,
         room_closes_at: datetime,
         bookings: List[models.Booking],
-) -> List[Dict[str, str]]:
+) -> List[Dict[str, datetime]]:
     available_slots = []
 
     for booking in bookings:
@@ -97,8 +84,8 @@ def get_available_time_slots(
 
 
 def check_booking_time_for_clash(
-        start: datetime,
-        end: datetime,
+        start: time,
+        end: time,
         bookings: List[models.Booking],
 ) -> bool:
     for booking in bookings:

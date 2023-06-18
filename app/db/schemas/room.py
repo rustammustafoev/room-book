@@ -22,8 +22,3 @@ class RoomOut(RoomBase):
 
     class Config:
         orm_mode = True
-
-
-class AvailableTimeSlot(BaseModel):
-    start: datetime
-    end: datetime

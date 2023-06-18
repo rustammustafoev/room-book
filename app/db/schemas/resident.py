@@ -1,3 +1,5 @@
+from typing import Optional
+
 from datetime import datetime
 
 from pydantic import BaseModel, EmailStr
@@ -6,8 +8,8 @@ from pydantic import BaseModel, EmailStr
 class ResidentBase(BaseModel):
     name: str
     email: EmailStr
-    start_date: datetime.date
-    end_date: datetime.date
+    start_date: datetime
+    end_date: datetime
 
 
 class ResidentIn(ResidentBase):

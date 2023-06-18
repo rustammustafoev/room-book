@@ -1,4 +1,4 @@
-from typing import Union, List
+from typing import Union
 
 from fastapi import APIRouter, Query, Path, HTTPException, Depends, Body
 from fastapi.encoders import jsonable_encoder
@@ -42,14 +42,14 @@ async def get_room(room_id: int = Path(..., title='Room ID', gt=0)):
     return room
 
 
-@router.post('/create', response_model=room_schemas.RoomOut)
+@router.post('/', response_model=room_schemas.RoomOut, status_code=201)
 async def create_room(room_form: room_schemas.RoomIn):
     room = await models.Room.create(**jsonable_encoder(room_form))
 
     return room
 
 
-@router.get('/{room_id}/availability', response_model=List[room_schemas.AvailableTimeSlot])
+@router.get('/{room_id}/availability')
 async def get_room_availability(
     room_id: int = Path(..., title='Room ID', gt=0),
     date: Union[str, None] = Query(default=None,
@@ -70,12 +70,12 @@ async def get_room_availability(
     return available_time_slots
 
 
-@router.get('/{room_id}/book', response_model=booking_schemas.BookingOut)
+@router.post('/{room_id}/book', response_model=booking_schemas.BookingOut)
 async def book_room(
         room_id: int = Path(..., title='Room ID', gt=0),
         booking_form: booking_schemas.BookingIn = Body(...)
 ):
-    room = await models.Room.get_or_none(id=room_id)
+    room = await models.Room.get_or_none(idbooking_form=room_id)
     resident = await models.Resident.get_or_none(name=booking_form.resident)
 
     if not room:
@@ -84,7 +84,7 @@ async def book_room(
     if not resident:
         raise HTTPException(status_code=400, detail={'error': 'Resident is not found'})
 
-    bookings = await models.Booking.filter(room=room, date=utils.clean_date(booking_form.start_time))
+    bookings = await models.Booking.filter(room=room, date=booking_form.date)
 
     if not utils.check_booking_time_for_clash(booking_form.start_time,
                                               booking_form.end_time,
