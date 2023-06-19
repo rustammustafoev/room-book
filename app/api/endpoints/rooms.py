@@ -106,7 +106,7 @@ async def book_room(
     if not resident:
         raise HTTPException(status_code=400, detail={'error': 'Resident is not found'})
 
-    bookings = await models.Booking.filter(room=room, date=booking_form.date)
+    bookings = await models.Booking.filter(room=room, date=booking_form.date).order_by('start_time')
 
     # Perform a check between current booking and the ones that already reserved
     if not utils.check_booking_time_for_clash(booking_form.start_time, booking_form.end_time, bookings):

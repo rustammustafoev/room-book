@@ -1,6 +1,6 @@
 from typing import Union
 
-from fastapi import APIRouter, Query, Depends, Path, HTTPException, Body
+from fastapi import APIRouter, Query, Depends, Path, HTTPException, Form
 from fastapi.responses import JSONResponse
 from tortoise.expressions import Q
 
@@ -33,7 +33,7 @@ async def get_bookings(
 @router.patch('/change/status/{booking_id}', response_model=booking_schemas.BookingOut)
 async def change_booking_status(
     booking_id: int = Path(..., gt=0),
-    booking_status: BookingStatus = Body(..., title='Booking status')
+    booking_status: BookingStatus = Form(..., title='Booking status')
 ):
     booking = await models.Booking.get_or_none(id=booking_id)
 
