@@ -1,5 +1,5 @@
 from typing import Callable, Union, List, Dict
-from datetime import datetime, time
+from datetime import datetime, date, time
 
 from fastapi import FastAPI, HTTPException
 from tortoise.contrib.fastapi import register_tortoise
@@ -37,38 +37,24 @@ def init_db(app: FastAPI) -> None:
         logger.success('Db is initialized successfully')
 
 
-def check_date_format(date: str) -> bool:
+def is_valid_date(date_: Union[date, None]) -> date:
+    current_date = date.today()
 
-    try:
-        datetime.strptime(date, '%Y-%m-%d')
-        return True
+    if date_ is None:
+        date_ = current_date
 
-    except ValueError:
-        return False
-
-
-def is_valid_date(date: Union[str, None]) -> str:
-    current_date = datetime.now().strftime('%Y-%m-%d')
-
-    if date is None:
-        date = current_date
-
-    elif not check_date_format(date):
-        raise HTTPException(status_code=400,
-                            detail={'error': 'Date does not match format YYYY-MM-DD'})
-
-    elif not (date >= current_date):
+    elif not (date_ >= current_date):
         raise HTTPException(status_code=400,
                             detail={'error': 'Specified date must not be in the past!'})
 
-    return date
+    return date_
 
 
 def get_available_time_slots(
-        room_opens_at: datetime,
-        room_closes_at: datetime,
+        room_opens_at: time,
+        room_closes_at: time,
         bookings: List[models.Booking],
-) -> List[Dict[str, datetime]]:
+):
     available_slots = []
 
     for booking in bookings:
@@ -80,7 +66,9 @@ def get_available_time_slots(
     if room_opens_at < room_closes_at:
         available_slots.append({'start': room_opens_at, 'end': room_closes_at})
 
-    return available_slots
+    payload = {'date': booking.date, 'available_slots': available_slots}
+
+    return payload
 
 
 def check_booking_time_for_clash(
@@ -88,6 +76,9 @@ def check_booking_time_for_clash(
         end: time,
         bookings: List[models.Booking],
 ) -> bool:
+    if not bookings:
+        return True
+
     for booking in bookings:
         if (
           start <= booking.end_time

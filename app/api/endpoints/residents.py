@@ -1,5 +1,6 @@
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Path
+from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 
 from app.db.schemas.pagination import PaginatedPerPageResponse
@@ -22,7 +23,7 @@ async def get_residents(
 
 
 @router.get('/{resident_id}', response_model=resident_schemas.ResidentOut)
-async def get_resident(resident_id: int):
+async def get_resident(resident_id: int = Path(..., gt=0)):
     resident = await models.Resident.get_or_none(id=resident_id)
 
     if not resident:
@@ -36,3 +37,15 @@ async def create_resident(resident_form: resident_schemas.ResidentIn):
     resident = await models.Resident.create(**jsonable_encoder(resident_form))
 
     return resident
+
+
+@router.delete('/{resident_id', status_code=204)
+async def delete_resident(resident_id: int = Path(..., gt=0)):
+    resident = await models.Resident.get_or_none(id=resident_id)
+
+    if not resident:
+        raise HTTPException(status_code=404, detail='Resident is not found')
+
+    await resident.delete()
+
+    return JSONResponse('Resident is deleted', status_code=204)

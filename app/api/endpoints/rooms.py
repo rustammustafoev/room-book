@@ -1,6 +1,8 @@
 from typing import Union
+from datetime import date, datetime
 
 from fastapi import APIRouter, Query, Path, HTTPException, Depends, Body
+from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from tortoise.expressions import Q
 
@@ -27,9 +29,9 @@ async def get_rooms(
 
     rooms_query = models.Room.filter(Q(*filters, join_type='AND'))
     count = await rooms_query.count()
-    items = await rooms_query.limit(q.limit).offset(q.offset)
+    rooms = await rooms_query.limit(q.limit).offset(q.offset)
 
-    return helpers.paginate(q.page, q.per_page, count, items)
+    return helpers.paginate(q.page, q.per_page, count, rooms)
 
 
 @router.get('/{room_id}', response_model=room_schemas.RoomOut)
@@ -43,27 +45,41 @@ async def get_room(room_id: int = Path(..., title='Room ID', gt=0)):
 
 
 @router.post('/', response_model=room_schemas.RoomOut, status_code=201)
-async def create_room(room_form: room_schemas.RoomIn):
+async def create_room(
+    room_form: room_schemas.RoomIn = Body(..., example=room_schemas.RoomInExample)
+):
     room = await models.Room.create(**jsonable_encoder(room_form))
 
     return room
 
 
+@router.delete('/{room_id', status_code=204)
+async def delete_room(room_id: int = Path(..., gt=0)):
+    room = await models.Room.get_or_none(id=room_id)
+
+    if not room:
+        raise HTTPException(status_code=404, detail='Room is not found')
+
+    await room.delete()
+
+    return JSONResponse('Room is deleted', status_code=204)
+
+
 @router.get('/{room_id}/availability')
 async def get_room_availability(
     room_id: int = Path(..., title='Room ID', gt=0),
-    date: Union[str, None] = Query(default=None,
-                                   title='Room availability at date',
-                                   description='Format: YYYY-MM-DD',
-                                   example='2023-06-12',)
+    date_: Union[date, None] = Query(default=None,
+                                     title='Room availability at date',
+                                     description='Format: YYYY-MM-DD',
+                                     example='2023-06-12',)
 ):
-    date = utils.is_valid_date(date)
+    date_ = utils.is_valid_date(date_)
     room = await models.Room.get_or_none(id=room_id)
 
     if not room:
         raise HTTPException(status_code=400, detail={'error': 'Room is not found'})
 
-    bookings = await models.Booking.filter(room=room, date=date).order_by('start_time')
+    bookings = await models.Booking.filter(room=room, date=date_).order_by('start_time')
 
     available_time_slots = utils.get_available_time_slots(room.opens_at, room.closes_at, bookings)
 
@@ -73,9 +89,10 @@ async def get_room_availability(
 @router.post('/{room_id}/book', response_model=booking_schemas.BookingOut)
 async def book_room(
         room_id: int = Path(..., title='Room ID', gt=0),
-        booking_form: booking_schemas.BookingIn = Body(...)
+        booking_form: booking_schemas.BookingIn = Body(..., title='Booking Form')
 ):
-    room = await models.Room.get_or_none(idbooking_form=room_id)
+    serialized_booking_form = jsonable_encoder(booking_form)
+    room = await models.Room.get_or_none(id=room_id)
     resident = await models.Resident.get_or_none(name=booking_form.resident)
 
     if not room:
@@ -84,16 +101,16 @@ async def book_room(
     if not resident:
         raise HTTPException(status_code=400, detail={'error': 'Resident is not found'})
 
-    bookings = await models.Booking.filter(room=room, date=booking_form.date)
+    bookings = await models.Booking.filter(room=room, date__date=booking_form.date)
 
-    if not utils.check_booking_time_for_clash(booking_form.start_time,
-                                              booking_form.end_time,
-                                              bookings):
+    # Perform a check between current booking and the ones that already reserved
+    if not utils.check_booking_time_for_clash(booking_form.start_time, booking_form.end_time, bookings):
         raise HTTPException(status_code=410, detail={'detail': 'Sorry, this room is fully booked'})
 
+    # Creating new room booking
     new_booking = await models.Booking.create(
-        room=room, resident=resident, start_time=booking_form.start_time,
-        end_time=booking_form.end_time, date=booking_form.date
+        room=room, resident=resident, start_time=serialized_booking_form['start_time'],
+        end_time=serialized_booking_form['end_time'], date=serialized_booking_form['date']
     )
 
     return new_booking
