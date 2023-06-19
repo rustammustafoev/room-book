@@ -1,6 +1,6 @@
 from datetime import time
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from app.db import constants
 
@@ -30,4 +30,12 @@ RoomInExample = {
     'type': 'focus',
     'opens_at': '9:00:00',
     'closes_at': '18:00:00'
+}
+
+RoomBookingExample = {
+    "date": "2023-06-19",
+    "start_time": "9:00:00",
+    "end_time": "10:00:00",
+    "status": "reserved",
+    "resident": "Resident"
 }
