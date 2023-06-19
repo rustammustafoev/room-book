@@ -1,6 +1,7 @@
 from typing import Union
 
 from fastapi import APIRouter, Query, Depends, Path, HTTPException, Body
+from fastapi.responses import JSONResponse
 from tortoise.expressions import Q
 
 from app.core import helpers
@@ -43,3 +44,15 @@ async def change_booking_status(
     await booking.save()
 
     return booking
+
+
+@router.delete('/delete/{booking_id}', status_code=204)
+async def delete_booking(booking_id: int = Path(..., gt=0)):
+    booking = await models.Booking.get_or_none(id=booking_id)
+
+    if not booking:
+        raise HTTPException(status_code=404, detail='Booking is not found')
+
+    await booking.delete()
+
+    return JSONResponse('Booking is deleted', status_code=204)

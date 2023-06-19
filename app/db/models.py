@@ -38,8 +38,8 @@ class Booking(Model):
     id = fields.IntField(pk=True)
     room = fields.ForeignKeyField('models.Room', related_name='bookings')
     resident = fields.ForeignKeyField('models.Resident', related_name='bookings')
-    start_time = fields.DatetimeField()
-    end_time = fields.DatetimeField()
+    start_time = fields.TimeField()
+    end_time = fields.TimeField()
     date = fields.DateField()
     status = fields.CharEnumField(constants.BookingStatus)
 

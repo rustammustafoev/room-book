@@ -39,7 +39,7 @@ async def create_resident(resident_form: resident_schemas.ResidentIn):
     return resident
 
 
-@router.delete('/{resident_id', status_code=204)
+@router.delete('/{resident_id}', status_code=204)
 async def delete_resident(resident_id: int = Path(..., gt=0)):
     resident = await models.Resident.get_or_none(id=resident_id)
 

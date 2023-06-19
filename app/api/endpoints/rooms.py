@@ -1,5 +1,5 @@
 from typing import Union
-from datetime import date, datetime
+from datetime import date
 
 from fastapi import APIRouter, Query, Path, HTTPException, Depends, Body
 from fastapi.responses import JSONResponse
@@ -53,7 +53,7 @@ async def create_room(
     return room
 
 
-@router.delete('/{room_id', status_code=204)
+@router.delete('/{room_id}', status_code=204)
 async def delete_room(room_id: int = Path(..., gt=0)):
     room = await models.Room.get_or_none(id=room_id)
 
@@ -73,6 +73,7 @@ async def get_room_availability(
                                      description='Format: YYYY-MM-DD',
                                      example='2023-06-12',)
 ):
+    payload = {}
     date_ = utils.is_valid_date(date_)
     room = await models.Room.get_or_none(id=room_id)
 
@@ -83,7 +84,12 @@ async def get_room_availability(
 
     available_time_slots = utils.get_available_time_slots(room.opens_at, room.closes_at, bookings)
 
-    return available_time_slots
+    payload.update({
+        'date': date_,
+        'available_time_slots': available_time_slots
+    })
+
+    return payload
 
 
 @router.post('/{room_id}/book', response_model=booking_schemas.BookingOut)
@@ -91,7 +97,6 @@ async def book_room(
         room_id: int = Path(..., title='Room ID', gt=0),
         booking_form: booking_schemas.BookingIn = Body(..., title='Booking Form')
 ):
-    serialized_booking_form = jsonable_encoder(booking_form)
     room = await models.Room.get_or_none(id=room_id)
     resident = await models.Resident.get_or_none(name=booking_form.resident)
 
@@ -101,7 +106,7 @@ async def book_room(
     if not resident:
         raise HTTPException(status_code=400, detail={'error': 'Resident is not found'})
 
-    bookings = await models.Booking.filter(room=room, date__date=booking_form.date)
+    bookings = await models.Booking.filter(room=room, date=booking_form.date)
 
     # Perform a check between current booking and the ones that already reserved
     if not utils.check_booking_time_for_clash(booking_form.start_time, booking_form.end_time, bookings):
@@ -109,8 +114,9 @@ async def book_room(
 
     # Creating new room booking
     new_booking = await models.Booking.create(
-        room=room, resident=resident, start_time=serialized_booking_form['start_time'],
-        end_time=serialized_booking_form['end_time'], date=serialized_booking_form['date']
+        room=room, resident=resident, start_time=booking_form.start_time,
+        end_time=booking_form.end_time, date=booking_form.date,
+        status=booking_form.status,
     )
 
     return new_booking

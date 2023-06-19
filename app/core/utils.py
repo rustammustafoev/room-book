@@ -1,5 +1,5 @@
-from typing import Callable, Union, List, Dict
-from datetime import datetime, date, time
+from typing import Callable, Union, List
+from datetime import date, time
 
 from fastapi import FastAPI, HTTPException
 from tortoise.contrib.fastapi import register_tortoise
@@ -18,7 +18,7 @@ def start_up_handler(app: FastAPI) -> Callable:
 
 def shut_down_handler(app: FastAPI) -> Callable:
     async def shut_down() -> None:
-        pass
+        logger.info('Application is shutting down!')
 
     return shut_down
 
@@ -50,6 +50,10 @@ def is_valid_date(date_: Union[date, None]) -> date:
     return date_
 
 
+def time_from_offset_aware_to_naive(value: time):
+    return value.replace(tzinfo=None)
+
+
 def get_available_time_slots(
         room_opens_at: time,
         room_closes_at: time,
@@ -66,9 +70,7 @@ def get_available_time_slots(
     if room_opens_at < room_closes_at:
         available_slots.append({'start': room_opens_at, 'end': room_closes_at})
 
-    payload = {'date': booking.date, 'available_slots': available_slots}
-
-    return payload
+    return available_slots
 
 
 def check_booking_time_for_clash(
@@ -80,9 +82,11 @@ def check_booking_time_for_clash(
         return True
 
     for booking in bookings:
+        booking_start_time = time_from_offset_aware_to_naive(booking.end_time)
+        booking_end_time = time_from_offset_aware_to_naive(booking.start_time)
         if (
-          start <= booking.end_time
-          and end >= booking.start_time
+            start < booking_start_time and end <= booking_start_time
+            or start >= booking_end_time
         ):
             return True
 
