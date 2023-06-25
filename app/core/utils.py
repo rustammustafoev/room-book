@@ -55,20 +55,27 @@ def time_from_offset_aware_to_naive(value: time):
 
 
 def get_available_time_slots(
-        room_opens_at: time,
-        room_closes_at: time,
+        given_date,
         bookings: List[models.Booking],
 ):
     available_slots = []
+    start = datetime.combine(given_date, time(0, 0, 0))
+    end = datetime.combine(given_date, time(23, 59, 59))
 
     for booking in bookings:
-        if booking.start_time > room_opens_at:
-            end_time = booking.start_time
-            available_slots.append({'start': room_opens_at, 'end': end_time})
-        room_opens_at = booking.end_time
+        if time_from_offset_aware_to_naive(booking.start_time) > start:
+            end_time = time_from_offset_aware_to_naive(booking.start_time)
+            available_slots.append({
+                'start': start.strftime('%d-%m-%Y %H:%M:%S'),
+                'end': end_time.strftime('%d-%m-%Y %H:%M:%S')
+            })
+        start = time_from_offset_aware_to_naive(booking.end_time)
 
-    if room_opens_at < room_closes_at:
-        available_slots.append({'start': room_opens_at, 'end': room_closes_at})
+    if start < end:
+        available_slots.append({
+            'start': start.strftime('%d-%m-%Y %H:%M:%S'),
+            'end': end.strftime('%d-%m-%Y %H:%M:%S')
+        })
 
     return available_slots
 
@@ -105,9 +112,7 @@ def convert_date_format(date_str):
         # Parse the input date string
         date_obj = datetime.strptime(date_str, '%d-%m-%Y')
 
-        # Convert the date to the desired format
-        converted_date_str = date_obj.strftime('%Y-%m-%d')
+        return date_obj.date()
 
-        return converted_date_str
     except ValueError as e:
         raise HTTPException(status_code=400, detail={'error': e})

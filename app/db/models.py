@@ -10,8 +10,6 @@ class Room(Model):
     type = fields.CharEnumField(constants.RoomType)
     capacity = fields.IntField(validators=[validators.check_min_value(1, 'capacity')])
     status = fields.BooleanField(default=True)
-    opens_at = fields.TimeField()
-    closes_at = fields.TimeField()
 
     class Meta:
         table = 'room'
@@ -24,8 +22,6 @@ class Resident(Model):
     id = fields.IntField(pk=True)
     name = fields.CharField(max_length=100, null=False, unique=True)
     email = fields.CharField(max_length=100, unique=True)
-    start_date = fields.DatetimeField()
-    end_date = fields.DatetimeField(null=True)
 
     class Meta:
         table = 'resident'
@@ -38,10 +34,9 @@ class Booking(Model):
     id = fields.IntField(pk=True)
     room = fields.ForeignKeyField('models.Room', related_name='bookings')
     resident = fields.ForeignKeyField('models.Resident', related_name='bookings')
-    start_time = fields.TimeField()
-    end_time = fields.TimeField()
+    start_time = fields.DatetimeField()
+    end_time = fields.DatetimeField()
     date = fields.DateField()
-    # status = fields.CharEnumField(constants.BookingStatus)
 
     class Meta:
         table = 'booking'

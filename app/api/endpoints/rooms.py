@@ -1,5 +1,5 @@
 from typing import Union
-from datetime import date as date_
+from datetime import date as datetime_date
 
 from fastapi import APIRouter, Query, Path, HTTPException, Depends, Body
 from fastapi.responses import JSONResponse
@@ -46,7 +46,7 @@ async def get_room(room_id: int = Path(..., title='Room ID', gt=0)):
     room = await models.Room.get_or_none(id=room_id)
 
     if room is None:
-        return JSONResponse({'error': 'Room is not found'}, status_code=404)
+        return JSONResponse({'error': 'topilmadi'}, status_code=404)
 
     return room
 
@@ -77,10 +77,13 @@ async def get_room_availability(
         room_id: int = Path(..., title='Room ID', gt=0),
         date: Union[str, None] = Query(default=None,
                                        title='Room availability at date',
-                                       description='Format: YYYY-MM-DD',
-                                       example='2023-06-12', )
+                                       description='Format: DD-MM-YYYY',
+                                       example='25-06-2023', )
 ):
-    date = utils.convert_date_format(date)
+    if date is not None:
+        date = utils.convert_date_format(date)
+    else:
+        date = datetime_date.today()
     room = await models.Room.get_or_none(id=room_id)
 
     if not room:
@@ -88,7 +91,7 @@ async def get_room_availability(
 
     bookings = await models.Booking.filter(room=room, date=date).order_by('start_time')
 
-    available_time_slots = utils.get_available_time_slots(room.opens_at, room.closes_at, bookings)
+    available_time_slots = utils.get_available_time_slots(date, bookings)
 
     return available_time_slots
 
@@ -109,12 +112,11 @@ async def book_room(
 
     start = utils.convert_to_datetime(booking_form.start)
     end = utils.convert_to_datetime(booking_form.end)
+
     if start.date() != end.date():
         raise HTTPException(status_code=400, detail={'error': 'Inconsistent dates'})
 
     date = start.date()
-    start = start.time()
-    end = end.time()
 
     bookings = await models.Booking.filter(room=room, date=date).order_by('start_time')
 
@@ -125,4 +127,4 @@ async def book_room(
     # Creating new room booking
     await models.Booking.create(room=room, resident=resident, start_time=start, end_time=end, date=date)
 
-    return JSONResponse({'message': 'xona muvaffaqiyatli band qilindi'})
+    return JSONResponse({'message': 'xona muvaffaqiyatli band qilindi'}, status_code=201)
