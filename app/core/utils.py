@@ -78,15 +78,14 @@ def check_booking_time_for_clash(
         end: time,
         bookings: List[models.Booking],
 ) -> bool:
-    if not bookings:
-        return True
 
     for booking in bookings:
         booking_start_time = time_from_offset_aware_to_naive(booking.start_time)
         booking_end_time = time_from_offset_aware_to_naive(booking.end_time)
         if (
-                (start < booking_start_time and end <= booking_start_time)
-                or start >= booking_end_time
+            (booking_start_time < start < booking_end_time)
+            or (booking_start_time < end < booking_end_time)
+            or (start < booking_start_time < end)
         ):
             return True
 

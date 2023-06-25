@@ -95,7 +95,8 @@ async def get_room_availability(
 @router.post('/{room_id}/book', response_model=booking_schemas.BookingOut)
 async def book_room(
         room_id: int = Path(..., title='Room ID', gt=0),
-        booking_form: booking_schemas.BookingIn = Body(..., title='Booking Form')
+        booking_form: booking_schemas.BookingIn = Body(..., title='Booking Form',
+                                                       example=room_schemas.RoomBookingExample)
 ):
     room = await models.Room.get_or_none(id=room_id)
     resident = await models.Resident.get_or_none(name=booking_form.resident)
@@ -109,7 +110,7 @@ async def book_room(
     bookings = await models.Booking.filter(room=room, date=booking_form.date).order_by('start_time')
 
     # Perform a check between current booking and the ones that already reserved
-    if not utils.check_booking_time_for_clash(booking_form.start_time, booking_form.end_time, bookings):
+    if utils.check_booking_time_for_clash(booking_form.start_time, booking_form.end_time, bookings):
         raise HTTPException(status_code=410, detail={'detail': 'Sorry, this room is fully booked'})
 
     # Creating new room booking
