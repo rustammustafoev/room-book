@@ -78,7 +78,7 @@ def check_booking_time_for_clash(
         end: time,
         bookings: List[models.Booking],
 ) -> bool:
-
+    # TODO: Write unit tests for this
     for booking in bookings:
         booking_start_time = time_from_offset_aware_to_naive(booking.start_time)
         booking_end_time = time_from_offset_aware_to_naive(booking.end_time)
