@@ -1,5 +1,5 @@
 from typing import Callable, Union, List
-from datetime import date, time
+from datetime import date, time, datetime
 
 from fastapi import FastAPI, HTTPException
 from tortoise.contrib.fastapi import register_tortoise
@@ -83,12 +83,31 @@ def check_booking_time_for_clash(
         booking_start_time = time_from_offset_aware_to_naive(booking.start_time)
         booking_end_time = time_from_offset_aware_to_naive(booking.end_time)
         if (
-            (booking_start_time < start < booking_end_time)
-            or (booking_start_time < end < booking_end_time)
-            or (start < booking_start_time < end)
+            (booking_start_time <= start < booking_end_time)
+            or (booking_start_time < end <= booking_end_time)
+            or (start < booking_start_time and end > booking_end_time)
         ):
             return True
 
     return False
 
 
+def convert_to_datetime(datetime_str):
+    try:
+        datetime_obj = datetime.strptime(datetime_str, '%d-%m-%Y %H:%M:%S')
+        return datetime_obj
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail={'error': e})
+
+
+def convert_date_format(date_str):
+    try:
+        # Parse the input date string
+        date_obj = datetime.strptime(date_str, '%d-%m-%Y')
+
+        # Convert the date to the desired format
+        converted_date_str = date_obj.strftime('%Y-%m-%d')
+
+        return converted_date_str
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail={'error': e})

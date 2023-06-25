@@ -41,7 +41,7 @@ class Booking(Model):
     start_time = fields.TimeField()
     end_time = fields.TimeField()
     date = fields.DateField()
-    status = fields.CharEnumField(constants.BookingStatus)
+    # status = fields.CharEnumField(constants.BookingStatus)
 
     class Meta:
         table = 'booking'

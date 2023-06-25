@@ -1,19 +1,17 @@
-from datetime import time, date
-
 from pydantic import BaseModel, Field
 
-from app.db.constants import BookingStatus
+
+class BookingResident(BaseModel):
+    name: str
 
 
 class BookingBase(BaseModel):
-    date: date
-    start_time: time
-    end_time: time
-    status: BookingStatus = Field(default=BookingStatus.RESERVED)
+    start: str
+    end: str
 
 
 class BookingIn(BookingBase):
-    resident: str = Field(..., title='Resident name')
+    resident: BookingResident = Field(..., title='Resident name')
 
 
 class BookingOut(BookingBase):

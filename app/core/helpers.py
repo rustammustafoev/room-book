@@ -11,6 +11,14 @@ class PaginationParams:
         self.offset = (page - 1) * per_page
 
 
+class SimplePaginationParams:
+    def __init__(self, page: int = Query(1, ge=1), page_size: int = Query(3, ge=0)):
+        self.page = page
+        self.page_size = page_size
+        self.limit = page_size * page
+        self.offset = (page - 1) * page_size
+
+
 class Paginator:
     def __init__(self, page: int, per_page: int, count: int, items):
         self.page: int = page

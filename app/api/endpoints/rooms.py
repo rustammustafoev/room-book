@@ -1,5 +1,5 @@
 from typing import Union
-from datetime import date
+from datetime import date as date_
 
 from fastapi import APIRouter, Query, Path, HTTPException, Depends, Body
 from fastapi.responses import JSONResponse
@@ -10,28 +10,35 @@ from app.core import utils, helpers
 from app.db import models
 from app.db.schemas import room as room_schemas
 from app.db.schemas import booking as booking_schemas
-from app.db.schemas.pagination import PaginatedPerPageResponse
+from app.db.schemas.pagination import PaginatedResponse
 
 router = APIRouter()
 
 
-@router.get('/', response_model=PaginatedPerPageResponse[room_schemas.RoomOut])
+@router.get('/', response_model=PaginatedResponse[room_schemas.RoomOut])
 async def get_rooms(
-    search: Union[str, None] = Query(None, title='Room name'),
-    room_type: Union[str, None] = Query(None, title='Room type'),
-    q: helpers.PaginationParams = Depends(),
+        search: Union[str, None] = Query(None, title='Room name'),
+        type: Union[str, None] = Query(None, title='Room type'),
+        q: helpers.SimplePaginationParams = Depends(),
 ):
     filters = []
     if search:
         filters.append(Q(name=search))
-    if room_type:
-        filters.append(Q(type=room_type))
+    if type:
+        filters.append(Q(type=type))
 
     rooms_query = models.Room.filter(Q(*filters, join_type='AND'))
     count = await rooms_query.count()
     rooms = await rooms_query.limit(q.limit).offset(q.offset)
 
-    return helpers.paginate(q.page, q.per_page, count, rooms)
+    response = {
+        'page': q.page,
+        'count': count,
+        'page_size': q.page_size,
+        'results': rooms
+    }
+
+    return response
 
 
 @router.get('/{room_id}', response_model=room_schemas.RoomOut)
@@ -39,14 +46,14 @@ async def get_room(room_id: int = Path(..., title='Room ID', gt=0)):
     room = await models.Room.get_or_none(id=room_id)
 
     if room is None:
-        raise HTTPException(status_code=404, detail={'error': 'Room is not found'})
+        return JSONResponse({'error': 'Room is not found'}, status_code=404)
 
     return room
 
 
 @router.post('/', response_model=room_schemas.RoomOut, status_code=201)
 async def create_room(
-    room_form: room_schemas.RoomIn = Body(..., example=room_schemas.RoomInExample)
+        room_form: room_schemas.RoomIn = Body(..., example=room_schemas.RoomInExample)
 ):
     room = await models.Room.create(**jsonable_encoder(room_form))
 
@@ -67,39 +74,32 @@ async def delete_room(room_id: int = Path(..., gt=0)):
 
 @router.get('/{room_id}/availability')
 async def get_room_availability(
-    room_id: int = Path(..., title='Room ID', gt=0),
-    date_: Union[date, None] = Query(default=None,
-                                     title='Room availability at date',
-                                     description='Format: YYYY-MM-DD',
-                                     example='2023-06-12',)
+        room_id: int = Path(..., title='Room ID', gt=0),
+        date: Union[str, None] = Query(default=None,
+                                       title='Room availability at date',
+                                       description='Format: YYYY-MM-DD',
+                                       example='2023-06-12', )
 ):
-    payload = {}
-    date_ = utils.is_valid_date(date_)
+    date = utils.convert_date_format(date)
     room = await models.Room.get_or_none(id=room_id)
 
     if not room:
         raise HTTPException(status_code=400, detail={'error': 'Room is not found'})
 
-    bookings = await models.Booking.filter(room=room, date=date_).order_by('start_time')
+    bookings = await models.Booking.filter(room=room, date=date).order_by('start_time')
 
     available_time_slots = utils.get_available_time_slots(room.opens_at, room.closes_at, bookings)
 
-    payload.update({
-        'date': date_,
-        'available_time_slots': available_time_slots
-    })
-
-    return payload
+    return available_time_slots
 
 
-@router.post('/{room_id}/book', response_model=booking_schemas.BookingOut)
+@router.post('/{room_id}/book')
 async def book_room(
         room_id: int = Path(..., title='Room ID', gt=0),
-        booking_form: booking_schemas.BookingIn = Body(..., title='Booking Form',
-                                                       example=room_schemas.RoomBookingExample)
+        booking_form: booking_schemas.BookingIn = Body(..., title='Booking Form')
 ):
     room = await models.Room.get_or_none(id=room_id)
-    resident = await models.Resident.get_or_none(name=booking_form.resident)
+    resident = await models.Resident.get_or_none(name=booking_form.resident.name)
 
     if not room:
         raise HTTPException(status_code=400, detail={'error': 'Room is not found'})
@@ -107,18 +107,22 @@ async def book_room(
     if not resident:
         raise HTTPException(status_code=400, detail={'error': 'Resident is not found'})
 
-    bookings = await models.Booking.filter(room=room, date=booking_form.date).order_by('start_time')
+    start = utils.convert_to_datetime(booking_form.start)
+    end = utils.convert_to_datetime(booking_form.end)
+    if start.date() != end.date():
+        raise HTTPException(status_code=400, detail={'error': 'Inconsistent dates'})
+
+    date = start.date()
+    start = start.time()
+    end = end.time()
+
+    bookings = await models.Booking.filter(room=room, date=date).order_by('start_time')
 
     # Perform a check between current booking and the ones that already reserved
-    if utils.check_booking_time_for_clash(booking_form.start_time, booking_form.end_time, bookings):
-        raise HTTPException(status_code=410, detail={'detail': 'Sorry, this room is fully booked'})
+    if utils.check_booking_time_for_clash(start, end, bookings):
+        return JSONResponse({'error': 'uzr, siz tanlagan vaqtda xona band'}, status_code=410)
 
     # Creating new room booking
-    new_booking = await models.Booking.create(
-        room=room, resident=resident, start_time=booking_form.start_time,
-        end_time=booking_form.end_time, date=booking_form.date,
-        status=booking_form.status,
-    )
+    await models.Booking.create(room=room, resident=resident, start_time=start, end_time=end, date=date)
 
-    return new_booking
-
+    return JSONResponse({'message': 'xona muvaffaqiyatli band qilindi'})

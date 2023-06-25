@@ -7,14 +7,13 @@ from tortoise.expressions import Q
 from app.core import helpers
 from app.db import models
 from app.db.schemas import booking as booking_schemas
-from app.db.schemas.pagination import PaginatedPerPageResponse
 from app.db.constants import BookingStatus
 
 
 router = APIRouter()
 
 
-@router.get('/', response_model=PaginatedPerPageResponse[booking_schemas.BookingOut])
+@router.get('/')
 async def get_bookings(
         q: helpers.PaginationParams = Depends(),
         booking_status: Union[BookingStatus, None] = Query(None, title='Booking status')
@@ -27,7 +26,9 @@ async def get_bookings(
     count = await booking_query.count()
     bookings = await booking_query.limit(q.limit).offset(q.offset)
 
-    return helpers.paginate(q.page, q.per_page, count, bookings)
+    response = {'count': count, 'results': bookings}
+
+    return response
 
 
 @router.patch('/change/status/{booking_id}', response_model=booking_schemas.BookingOut)

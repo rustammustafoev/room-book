@@ -12,3 +12,10 @@ class PaginatedPerPageResponse(GenericModel, Generic[M]):
     next_page: Optional[AnyHttpUrl] = Field(None, description='url of the next page if it exists')
     previous_page: Optional[AnyHttpUrl] = Field(None, description='url of the previous page if it exists')
     items: List[M] = Field(description='List of items returned in a paginated response')
+
+
+class PaginatedResponse(GenericModel, Generic[M]):
+    page: int
+    count: int
+    page_size: int
+    results: List[M]
